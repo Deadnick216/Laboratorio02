@@ -4,7 +4,9 @@ package check;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.EvaluationResult;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+
 
 public class ArchChecker {
     public static void main(String[] args) {
@@ -18,19 +20,19 @@ public class ArchChecker {
         ArchRule uiOnlyToService = classes()
             .that().resideInAPackage("..ui..")
             .should().onlyDependOnClassesThat()
-                .resideInAnyPackage("..ui..", "..service..", "java..")
+                .resideInAnyPackage("..ui..", "java..")
             .because("UI no debe acceder a DAO directo");
 
         ArchRule serviceOnlyToDao = classes()
             .that().resideInAPackage("..service..")
             .should().onlyDependOnClassesThat()
-                .resideInAnyPackage("..service..", "..dao..", "java..")
+                .resideInAnyPackage("..service..", "java..")
             .because("Service no debe acceder a UI directo");
 
         ArchRule noDaoToUiOrService = classes()
             .that().resideInAPackage("..dao..")
             .should().onlyDependOnClassesThat()
-                .resideInAnyPackage("..dao..", "java..")
+                .resideInAnyPackage( "java..","..ui..", "..service..")
             .because("DAO no debe acceder a UI ni Service");
 
         // Ejecuta cada regla e imprime las violaciones
@@ -40,15 +42,17 @@ public class ArchChecker {
     }
 
     private static void runRule(String name, ArchRule rule, JavaClasses classes) {
-        System.out.println("Regla: " + name);
-        try {
-            rule.check(classes);
-            System.out.println("  ✓ OK");
-        } catch (AssertionError err) {
-            System.out.println("  ✗ Violaciones encontradas:");
-            // ArchUnit lanza AssertionError con detalle en el mensaje
-            System.out.println(err.getMessage());
-        }
-        System.out.println();
+    System.out.println("Regla: " + name);
+
+    EvaluationResult result = rule.evaluate(classes);
+    if (result.hasViolation()) {
+        System.out.println("  ✗ Violaciones encontradas:");
+        result.getFailureReport().getDetails().forEach(detail -> {
+            System.out.println("    - " + detail);
+        });
+    } else {
+        System.out.println("  ✓ OK");
     }
+    System.out.println();
+}
 }
